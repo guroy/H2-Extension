@@ -175,8 +175,6 @@ import org.h2.test.unit.TestFileSystem;
 import org.h2.test.unit.TestFtp;
 import org.h2.test.unit.TestIntArray;
 import org.h2.test.unit.TestIntIntHashMap;
-import org.h2.test.unit.TestJmx;
-import org.h2.test.unit.TestIntPerfectHash;
 import org.h2.test.unit.TestLocale;
 import org.h2.test.unit.TestMathUtils;
 import org.h2.test.unit.TestModifyOnWrite;
@@ -324,6 +322,11 @@ java org.h2.test.TestAll timer
      * Test the split file system.
      */
     public boolean splitFileSystem;
+
+    /**
+     * Support nested joins.
+     */
+    public boolean nestedJoins;
 
     /**
      * If only fast tests should be run. If enabled, SSL is not tested.
@@ -819,8 +822,8 @@ kill -9 `jps -l | grep "org.h2.test." | cut -d " " -f 1`
         addTest(new TestFtp());
         addTest(new TestIntArray());
         addTest(new TestIntIntHashMap());
-        addTest(new TestIntPerfectHash());
-        addTest(new TestJmx());
+        addTest(new TestPerfectHash());
+        //addTest(new TestJmx());
         addTest(new TestMathUtils());
         addTest(new TestModifyOnWrite());
         addTest(new TestOldVersion());

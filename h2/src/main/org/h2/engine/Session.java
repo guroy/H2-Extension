@@ -86,7 +86,7 @@ public class Session extends SessionWithState {
     private String currentSchemaName;
     private String[] schemaSearchPath;
     private Trace trace;
-    private HashMap<String, Value> removeLobMap;
+    private HashMap<String, Value> unlinkLobMap;
     private int systemIdentifier;
     private HashMap<String, Procedure> procedures;
     private boolean undoLogEnabled = true;
@@ -173,13 +173,14 @@ public class Session extends SessionWithState {
             old = variables.remove(name);
         } else {
             // link LOB values, to make sure we have our own object
-            value = value.copy(database,
+            value = value.link(database,
                     LobStorageFrontend.TABLE_ID_SESSION_VARIABLE);
             old = variables.put(name, value);
         }
         if (old != null) {
-            // remove the old value (in case it is a lob)
-            old.remove();
+            // close the old value (in case it is a lob)
+            old.unlink(database);
+            old.close();
         }
     }
 
@@ -546,8 +547,8 @@ public class Session extends SessionWithState {
     private void removeTemporaryLobs(boolean onTimeout) {
         if (temporaryLobs != null) {
             for (Value v : temporaryLobs) {
-                if (!v.isLinkedToTable()) {
-                    v.remove();
+                if (!v.isLinked()) {
+                    v.close();
                 }
             }
             temporaryLobs.clear();
@@ -561,8 +562,8 @@ public class Session extends SessionWithState {
                     break;
                 }
                 Value v = temporaryResultLobs.removeFirst().value;
-                if (!v.isLinkedToTable()) {
-                    v.remove();
+                if (!v.isLinked()) {
+                    v.close();
                 }
             }
         }
@@ -575,16 +576,17 @@ public class Session extends SessionWithState {
     }
 
     private void endTransaction() {
-        if (removeLobMap != null && removeLobMap.size() > 0) {
+        if (unlinkLobMap != null && unlinkLobMap.size() > 0) {
             if (database.getMvStore() == null) {
                 // need to flush the transaction log, because we can't unlink
                 // lobs if the commit record is not written
                 database.flush();
             }
-            for (Value v : removeLobMap.values()) {
-                v.remove();
+            for (Value v : unlinkLobMap.values()) {
+                v.unlink(database);
+                v.close();
             }
-            removeLobMap = null;
+            unlinkLobMap = null;
         }
         unlockAll();
     }
@@ -1126,24 +1128,29 @@ public class Session extends SessionWithState {
     }
 
     /**
-     * Remember that the given LOB value must be removed at commit.
+     * Remember that the given LOB value must be un-linked (disconnected from
+     * the table) at commit.
      *
      * @param v the value
      */
-    public void removeAtCommit(Value v) {
-        if (SysProperties.CHECK && !v.isLinkedToTable()) {
+    public void unlinkAtCommit(Value v) {
+        if (SysProperties.CHECK && !v.isLinked()) {
             DbException.throwInternalError();
         }
+        if (unlinkLobMap == null) {
+            unlinkLobMap = New.hashMap();
+        }
+        unlinkLobMap.put(v.toString(), v);
     }
 
     /**
-     * Do not remove this LOB value at commit any longer.
+     * Do not unlink this LOB value at commit any longer.
      *
      * @param v the value
      */
-    public void removeAtCommitStop(Value v) {
-        if (removeLobMap != null) {
-            removeLobMap.remove(v.toString());
+    public void unlinkAtCommitStop(Value v) {
+        if (unlinkLobMap != null) {
+            unlinkLobMap.remove(v.toString());
         }
     }
 
@@ -1474,11 +1481,7 @@ public class Session extends SessionWithState {
 
     @Override
     public void addTemporaryLob(Value v) {
-        if (v.getType() != Value.CLOB && v.getType() != Value.BLOB) {
-            return;
-        }
-        if (v.getTableId() == LobStorageFrontend.TABLE_RESULT ||
-                v.getTableId() == LobStorageFrontend.TABLE_TEMP) {
+        if (v.getTableId() == LobStorageFrontend.TABLE_RESULT) {
             if (temporaryResultLobs == null) {
                 temporaryResultLobs = new LinkedList<TimeoutValue>();
             }

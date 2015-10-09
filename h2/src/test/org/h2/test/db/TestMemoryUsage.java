@@ -177,16 +177,11 @@ public class TestMemoryUsage extends TestBase {
         }
         int base = Utils.getMemoryUsed();
         stat.execute("create index idx_test_id on test(id)");
-        for (int i = 0;; i++) {
-            System.gc();
-            int used = Utils.getMemoryUsed() - base;
-            if (used <= getSize(7500, 12000)) {
-                break;
-            }
-            if (i < 16) {
-                continue;
-            }
-            fail("Used: " + used);
+        System.gc();
+        System.gc();
+        int used = Utils.getMemoryUsed();
+        if ((used - base) > getSize(7500, 12000)) {
+            fail("Used: " + (used - base));
         }
         stat.execute("drop table test");
         conn.close();

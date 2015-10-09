@@ -25,6 +25,7 @@ public class TestLimit extends TestBase {
     public static void main(String... a) throws Exception {
         TestBase test = TestBase.createCaller().init();
         // test.config.traceTest = true;
+        test.config.nestedJoins = true;
         test.test();
     }
 

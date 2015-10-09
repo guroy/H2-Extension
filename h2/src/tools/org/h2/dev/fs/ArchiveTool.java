@@ -54,7 +54,6 @@ public class ArchiveTool {
      * @param args the command line arguments
      */
     public static void main(String... args) throws Exception {
-        Log log = new Log();
         if (args.length == 1) {
             File f = new File(args[0]);
             if (f.exists()) {
@@ -83,17 +82,16 @@ public class ArchiveTool {
             String toDir = args[2];
             extract(fromFile, toDir);
         } else {
-            log.println("An archive tool to efficiently compress large directories");
-            log.println("Command line options:");
-            log.println("<sourceDir>");
-            log.println("<compressedFile>");
-            log.println("-compress <compressedFile> <sourceDir>");
-            log.println("-extract <compressedFile> <targetDir>");
+            System.out.println("An archive tool to efficiently compress large directories");
+            System.out.println("Command line options:");
+            System.out.println("<sourceDir>");
+            System.out.println("<compressedFile>");
+            System.out.println("-compress <compressedFile> <sourceDir>");
+            System.out.println("-extract <compressedFile> <targetDir>");
         }
     }
 
     private static void compress(String fromDir, String toFile) throws IOException {
-        final Log log = new Log();
         final long start = System.currentTimeMillis();
         final AtomicBoolean title = new AtomicBoolean();
         long size = getSize(new File(fromDir), new Runnable() {
@@ -106,18 +104,18 @@ public class ArchiveTool {
                     long now = System.currentTimeMillis();
                     if (now - lastTime > 3000) {
                         if (!title.getAndSet(true)) {
-                            log.println("Counting files");
+                            System.out.println("Counting files");
                         }
-                        log.print(count + " ");
+                        System.out.print(count + " ");
                         lastTime = now;
                     }
                 }
             }
         });
         if (title.get()) {
-            log.println();
+            System.out.println();
         }
-        log.println("Compressing " + size / MB + " MB");
+        System.out.println("Compressing " + size / MB + " MB");
         InputStream in = getDirectoryInputStream(fromDir);
         String temp = toFile + ".temp";
         OutputStream out =
@@ -127,22 +125,21 @@ public class ArchiveTool {
         def.setLevel(Deflater.BEST_SPEED);
         out = new BufferedOutputStream(
                 new DeflaterOutputStream(out, def), 1024 * 1024);
-        sort(log, in, out, temp, size);
+        sort(in, out, temp, size);
         in.close();
         out.close();
-        log.println();
-        log.println("Compressed to " +
+        System.out.println();
+        System.out.println("Compressed to " +
                 new File(toFile).length() / MB + " MB in " +
                 (System.currentTimeMillis() - start) / 1000 +
                 " seconds");
-        log.println();
+        System.out.println();
     }
 
     private static void extract(String fromFile, String toDir) throws IOException {
-        Log log = new Log();
         long start = System.currentTimeMillis();
         long size = new File(fromFile).length();
-        log.println("Extracting " + size / MB + " MB");
+        System.out.println("Extracting " + size / MB + " MB");
         InputStream in =
                 new BufferedInputStream(
                         new FileInputStream(fromFile), 1024 * 1024);
@@ -150,12 +147,12 @@ public class ArchiveTool {
         Inflater inflater = new Inflater();
         in = new InflaterInputStream(in, inflater, 1024 * 1024);
         OutputStream out = getDirectoryOutputStream(toDir);
-        combine(log, in, out, temp);
+        combine(in, out, temp);
         inflater.end();
         in.close();
         out.close();
-        log.println();
-        log.println("Extracted in " +
+        System.out.println();
+        System.out.println("Extracted in " +
                 (System.currentTimeMillis() - start) / 1000 +
                 " seconds");
     }
@@ -392,8 +389,9 @@ public class ArchiveTool {
         };
     }
 
-    private static void sort(Log log, InputStream in, OutputStream out,
+    private static void sort(InputStream in, OutputStream out,
             String tempFileName, long size) throws IOException {
+        long lastTime = System.currentTimeMillis();
         int bufferSize = 32 * 1024 * 1024;
         DataOutputStream tempOut = new DataOutputStream(new BufferedOutputStream(
                 new FileOutputStream(tempFileName), 1024 * 1024));
@@ -413,7 +411,7 @@ public class ArchiveTool {
                 break;
             }
             inPos += len;
-            log.printProgress(0, 50, inPos, size);
+            lastTime = printProgress(lastTime, 0, 50, inPos, size);
             TreeMap<Chunk, Chunk> map = new TreeMap<Chunk, Chunk>();
             for (int pos = 0; pos < len;) {
                 int[] key = getKey(bytes, pos, len);
@@ -481,7 +479,7 @@ public class ArchiveTool {
                 last = c;
             }
             inPos += s.readNext();
-            log.printProgress(50, 100, inPos, size);
+            lastTime = printProgress(lastTime, 50, 100, inPos, size);
             if (s.current != null) {
                 segmentIn.add(s);
             }
@@ -577,8 +575,9 @@ public class ArchiveTool {
         return hash;
     }
 
-    private static void combine(Log log, InputStream in, OutputStream out,
+    private static void combine(InputStream in, OutputStream out,
             String tempFileName) throws IOException {
+        long lastTime = System.currentTimeMillis();
         int bufferSize = 16 * 1024 * 1024;
         DataOutputStream tempOut =
                 new DataOutputStream(
@@ -615,7 +614,7 @@ public class ArchiveTool {
                 }
                 int length = c.value.length;
                 inPos += length;
-                log.printProgress(0, 50, inPos, size);
+                lastTime = printProgress(lastTime, 0, 50, inPos, size);
                 segmentSize += length;
                 for (long x : c.idList) {
                     map.put(x, c.value);
@@ -658,7 +657,7 @@ public class ArchiveTool {
             Chunk c = s.current;
             dataOut.write(c.value);
             inPos += s.readNext();
-            log.printProgress(50, 100, inPos, size);
+            lastTime = printProgress(lastTime, 50, 100, inPos, size);
             if (s.current != null) {
                 segmentIn.add(s);
             }
@@ -814,64 +813,6 @@ public class ArchiveTool {
     }
 
     /**
-     * A logger, including context.
-     */
-    static class Log {
-
-        private long lastTime;
-        private int pos;
-
-        /**
-         * Print an empty line.
-         */
-        void println() {
-            System.out.println();
-        }
-
-        /**
-         * Print a message.
-         *
-         * @param msg the message
-         */
-        void print(String msg) {
-            System.out.print(msg);
-        }
-
-        /**
-         * Print a message.
-         *
-         * @param msg the message
-         */
-        void println(String msg) {
-            System.out.println(msg);
-        }
-
-        /**
-         * Print the progress.
-         *
-         * @param low the percent value if current = 0
-         * @param high the percent value if current = total
-         * @param current the current value
-         * @param total the maximum value
-         */
-        void printProgress(int low, int high,
-                long current, long total) {
-            long now = System.currentTimeMillis();
-            if (now - lastTime > 3000) {
-                String msg = (low + (high - low) * current / total) + "% ";
-                if (pos > 80) {
-                    System.out.println();
-                    pos = 0;
-                }
-                System.out.print(msg);
-                pos += msg.length();
-                lastTime = now;
-            }
-        }
-
-    }
-
-    /**
      * Write a variable size long value.
      *
      * @param out the output stream
@@ -918,6 +859,16 @@ public class ArchiveTool {
             }
         }
         return x;
+    }
+
+    private static long printProgress(long lastTime, int low, int high,
+            long current, long total) {
+        long now = System.currentTimeMillis();
+        if (now - lastTime > 3000) {
+            System.out.print((low + (high - low) * current / total) + "% ");
+            lastTime = now;
+        }
+        return lastTime;
     }
 
 }

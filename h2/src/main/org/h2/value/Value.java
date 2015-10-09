@@ -1021,14 +1021,14 @@ public abstract class Value {
     }
 
     /**
-     * Copy a large value, to be used in the given table. For values that are
-     * kept fully in memory this method has no effect.
+     * Link a large value to a given table. For values that are kept fully in
+     * memory this method has no effect.
      *
      * @param handler the data handler
-     * @param tableId the table where this object is used
+     * @param tableId the table to link to
      * @return the new value or itself
      */
-    public Value copy(DataHandler handler, int tableId) {
+    public Value link(DataHandler handler, int tableId) {
         return this;
     }
 
@@ -1038,15 +1038,25 @@ public abstract class Value {
      *
      * @return true if it is
      */
-    public boolean isLinkedToTable() {
+    public boolean isLinked() {
         return false;
     }
 
     /**
-     * Remove the underlying resource, if any. For values that are kept fully in
+     * Mark any underlying resource as 'not linked to any table'. For values
+     * that are kept fully in memory this method has no effect.
+     *
+     * @param handler the data handler
+     */
+    public void unlink(DataHandler handler) {
+        // nothing to do
+    }
+
+    /**
+     * Close the underlying resource, if any. For values that are kept fully in
      * memory this method has no effect.
      */
-    public void remove() {
+    public void close() {
         // nothing to do
     }
 

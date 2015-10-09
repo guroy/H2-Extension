@@ -5415,17 +5415,12 @@ public class Parser {
                 AlterTableAlterColumn command = new AlterTableAlterColumn(
                         session, table.getSchema());
                 command.setType(CommandInterface.ALTER_TABLE_DROP_COLUMN);
-                ArrayList<Column> columnsToRemove = New.arrayList();
-                do {
-                    String columnName = readColumnIdentifier();
-                    if (ifExists && !table.doesColumnExist(columnName)) {
-                        return new NoOperation(session);
-                    }
-                    Column column = table.getColumn(columnName);
-                    columnsToRemove.add(column);
-                } while (readIf(","));
+                String columnName = readColumnIdentifier();
                 command.setTable(table);
-                command.setColumnsToRemove(columnsToRemove);
+                if (ifExists && !table.doesColumnExist(columnName)) {
+                    return new NoOperation(session);
+                }
+                command.setOldColumn(table.getColumn(columnName));
                 return command;
             }
         } else if (readIf("CHANGE")) {

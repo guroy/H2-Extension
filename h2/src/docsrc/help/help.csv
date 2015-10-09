@@ -289,13 +289,12 @@ ALTER TABLE TEST ALTER COLUMN NAME SET NULL;
 "
 
 "Commands (DDL)","ALTER TABLE DROP COLUMN","
-ALTER TABLE tableName DROP COLUMN [ IF EXISTS ] ( columnName [,...] )
+ALTER TABLE tableName DROP COLUMN [ IF EXISTS ] columnName
 ","
-Removes column(s) from a table.
+Removes a column from a table.
 This command commits an open transaction in this connection.
 ","
 ALTER TABLE TEST DROP COLUMN NAME
-ALTER TABLE TEST DROP COLUMN NAME1, NAME2
 "
 
 "Commands (DDL)","ALTER TABLE DROP CONSTRAINT","
@@ -3819,16 +3818,6 @@ Admin rights are required to execute this command.
 ","
 SELECT LENGTH(FILE_READ('~/.h2.server.properties')) LEN;
 SELECT FILE_READ('http://localhost:8182/stylesheet.css', NULL) CSS;
-"
-
-"Functions (System)","FILE_WRITE","
-FILE_WRITE(blobValue, fileNameString)
-","
-Write the supplied parameter into a file. Return the number of bytes written.
-
-Write access to folder, and admin rights are required to execute this command.
-","
-SELECT FILE_WRITE('Hello world', '/tmp/hello.txt')) LEN;
 "
 
 "Functions (System)","GREATEST","

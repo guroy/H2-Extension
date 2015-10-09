@@ -13,7 +13,6 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-
 import org.h2.engine.Constants;
 import org.h2.engine.SysProperties;
 import org.h2.message.DbException;
@@ -206,9 +205,10 @@ public class ValueLobDb extends Value implements Value.ValueClob,
     }
 
     @Override
-    public boolean isLinkedToTable() {
-        return small == null &&
-                tableId >= 0;
+    public boolean isLinked() {
+        return tableId != LobStorageFrontend.TABLE_ID_SESSION_VARIABLE &&
+                tableId != LobStorageFrontend.TABLE_RESULT &&
+                small == null;
     }
 
     public boolean isStored() {
@@ -216,7 +216,7 @@ public class ValueLobDb extends Value implements Value.ValueClob,
     }
 
     @Override
-    public void remove() {
+    public void close() {
         if (fileName != null) {
             if (tempFile != null) {
                 tempFile.stopAutoDelete();
@@ -233,10 +233,24 @@ public class ValueLobDb extends Value implements Value.ValueClob,
     }
 
     @Override
-    public Value copy(DataHandler database, int tableId) {
+    public void unlink(DataHandler database) {
+        if (small == null &&
+                tableId != LobStorageFrontend.TABLE_ID_SESSION_VARIABLE) {
+            database.getLobStorage().setTable(this,
+                    LobStorageFrontend.TABLE_ID_SESSION_VARIABLE);
+            tableId = LobStorageFrontend.TABLE_ID_SESSION_VARIABLE;
+        }
+    }
+
+    @Override
+    public Value link(DataHandler database, int tabId) {
         if (small == null) {
-            Value v2 = handler.getLobStorage().copyLob(this, tableId, getPrecision());
-            return v2;
+            if (tableId == LobStorageFrontend.TABLE_TEMP) {
+                database.getLobStorage().setTable(this, tabId);
+                this.tableId = tabId;
+            } else {
+                return handler.getLobStorage().copyLob(this, tabId, getPrecision());
+            }
         } else if (small.length > database.getMaxLengthInplaceLob()) {
             LobStorageInterface s = database.getLobStorage();
             Value v;
@@ -245,9 +259,7 @@ public class ValueLobDb extends Value implements Value.ValueClob,
             } else {
                 v = s.createClob(getReader(), getPrecision());
             }
-            Value v2 = v.copy(database, tableId);
-            v.remove();
-            return v2;
+            return v.link(database, tabId);
         }
         return this;
     }

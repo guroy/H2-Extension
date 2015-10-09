@@ -32,7 +32,7 @@ public class ParameterRemote implements ParameterInterface {
     @Override
     public void setValue(Value newValue, boolean closeOld) {
         if (closeOld && value != null) {
-            value.remove();
+            value.close();
         }
         value = newValue;
     }

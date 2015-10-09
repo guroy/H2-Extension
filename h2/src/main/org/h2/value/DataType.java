@@ -607,9 +607,6 @@ public class DataType {
                                 createClob(new BufferedReader(in), -1);
                     }
                 }
-                if (session != null) {
-                    session.addTemporaryLob(v);
-                }
                 break;
             }
             case Value.BLOB: {
@@ -621,9 +618,6 @@ public class DataType {
                 InputStream in = rs.getBinaryStream(columnIndex);
                 v = (in == null) ? (Value) ValueNull.INSTANCE :
                     session.getDataHandler().getLobStorage().createBlob(in, -1);
-                if (session != null) {
-                    session.addTemporaryLob(v);
-                }
                 break;
             }
             case Value.JAVA_OBJECT: {
@@ -961,15 +955,6 @@ public class DataType {
      * @return the value
      */
     public static Value convertToValue(SessionInterface session, Object x,
-            int type) {
-        Value v = convertToValue1(session, x, type);
-        if (session != null) {
-            session.addTemporaryLob(v);
-        }
-        return v;
-    }
-
-    private static Value convertToValue1(SessionInterface session, Object x,
             int type) {
         if (x == null) {
             return ValueNull.INSTANCE;
